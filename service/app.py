@@ -20,4 +20,4 @@ mop = MasterOfPuppets(executor=ThreadPoolExecutor(max_workers=4))
 app.extensions["mop"] = mop
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=False)  # TEMP TEST use_reloader=False prevents duplicate scheduler on reload

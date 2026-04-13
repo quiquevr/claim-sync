@@ -45,7 +45,10 @@ class MasterOfPuppets:
         with self._lock:
             existing = self.workers.get(key)
             if existing is not None:
+                print(f"[BotScheduler] MasterOfPuppets | schedule REPLACE | type={bot_type} account={account_id}", flush=True)  # TEMP TEST
                 existing.cancel()
+            else:
+                print(f"[BotScheduler] MasterOfPuppets | schedule NEW | type={bot_type} account={account_id}", flush=True)  # TEMP TEST
 
             self.schedule_entries[key] = entry
             self.workers[key] = worker
@@ -57,6 +60,7 @@ class MasterOfPuppets:
 
     def cancel(self, bot_type: str, account_id: str):
         key = (bot_type, account_id)
+        print(f"[BotScheduler] MasterOfPuppets | cancel | type={bot_type} account={account_id}", flush=True)  # TEMP TEST
         with self._lock:
             worker = self.workers.get(key)
             if worker is not None:
@@ -65,6 +69,7 @@ class MasterOfPuppets:
 
     def cancel_all(self):
         with self._lock:
+            print(f"[BotScheduler] MasterOfPuppets | cancel_all | worker_count={len(self.workers)}", flush=True)  # TEMP TEST
             for worker in self.workers.values():
                 worker.cancel()
             self.workers.clear()
@@ -73,6 +78,7 @@ class MasterOfPuppets:
         with self._lock:
             entries_snapshot = list(self.schedule_entries.items())
 
+        print(f"[BotScheduler] MasterOfPuppets | restart_all | entry_count={len(entries_snapshot)}", flush=True)  # TEMP TEST
         for key, _ in entries_snapshot:
             bot_type, account_id = key
             self.schedule(bot_type, account_id)

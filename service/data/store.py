@@ -33,12 +33,17 @@ bot_types = {
 
 # Bot instances keyed by (bot_type, account_id) tuple
 bot_instances = {
-    ("ehr", "acc_001"): {
+    ("ehr", "acc_001"): {  # TEMP TEST
         "bot-instance-id": 1,
         "bot_type": "ehr",
         "account_id": "acc_001",
-        "schedule": {"interval_minutes": 60, "retry_attempts": 3, "timeout_seconds": 300, "start_date": 1711065600},
-        "max_concurrent_jobs": 3,
+        "schedule": {
+            "interval_minutes": 1,  # TEMP TEST (normally 60)
+            "retry_attempts": 1,    # TEMP TEST (normally 3)
+            "timeout_seconds": 30,  # TEMP TEST (normally 300)
+            "start_date": 1711065600,
+        },
+        "max_concurrent_jobs": 1,   # TEMP TEST (normally 3)
         "priority": "high",
         "next-exec-date": 1711069200,
         "stats": {"processed": 42},
