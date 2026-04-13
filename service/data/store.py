@@ -71,6 +71,20 @@ bot_instances = {
 # Auto-increment counter for bot instance IDs
 _bot_instance_id_seq = 4
 
+# Account+bot configs keyed by (account_id, bot_type) — value is a list of config objects
+account_bot_configs = {
+    ("acc_001", "ehr"): [
+        {"settings": {"max_concurrent_jobs": 5, "priority": "high"}},
+        {"settings": {"max_concurrent_jobs": 2, "priority": "normal"}},
+    ],
+    ("acc_001", "payer"): [
+        {"settings": {"max_concurrent_jobs": 3, "priority": "high"}},
+    ],
+    ("acc_002", "clearinghouse"): [
+        {"settings": {"max_concurrent_jobs": 1, "priority": "normal"}},
+    ],
+}
+
 # Keyed by claim ID (str)
 claims = {
     "claim_0001": {
