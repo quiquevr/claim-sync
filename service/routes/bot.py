@@ -1,5 +1,5 @@
 import time
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from data import store
 
 bot_bp = Blueprint("bot", __name__)
@@ -67,6 +67,9 @@ def schedule_bot(bot_type, account_id):
         }
         store.bot_instances[key] = instance
 
+    mop = current_app.extensions["mop"]
+    mop.schedule(bot_type, account_id)
+
     return jsonify({
         "bot-instance-id": instance["bot-instance-id"],
         "next-exec-date": instance["next-exec-date"],
@@ -124,13 +127,13 @@ def bot_status(bot_type, account_id):
 
 @bot_bp.route("/puppet/master-of/start-all", methods=["POST"])
 def start_all():
-    count = 0
+    mop = current_app.extensions["mop"]
+    count = len(mop.schedule_entries)
     for instance in store.bot_instances.values():
-        if instance["status"] != "SCHEDULED":
-            schedule = instance.get("schedule", {})
-            instance["next-exec-date"] = int(time.time()) + schedule.get("interval_minutes", 60) * 60
-            instance["status"] = "SCHEDULED"
-            count += 1
+        schedule = instance.get("schedule", {})
+        instance["next-exec-date"] = int(time.time()) + schedule.get("interval_minutes", 60) * 60
+        instance["status"] = "SCHEDULED"
+    mop.restart_all()
     return jsonify({"affected": count})
 
 
@@ -140,10 +143,10 @@ def start_all():
 
 @bot_bp.route("/puppet/master-of/kill-em-all", methods=["POST"])
 def kill_all():
-    count = 0
+    mop = current_app.extensions["mop"]
+    count = len(mop.workers)
     for instance in store.bot_instances.values():
-        if instance["status"] != "KILLED":
-            instance["status"] = "KILLED"
-            instance["next-exec-date"] = None
-            count += 1
+        instance["status"] = "KILLED"
+        instance["next-exec-date"] = None
+    mop.cancel_all()
     return jsonify({"affected": count})
