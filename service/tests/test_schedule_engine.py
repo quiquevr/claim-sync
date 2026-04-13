@@ -7,10 +7,12 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 from bots.bot_factory import BotFactory
+from bots.clearinghouse_bot import ClearingHouseBot
 from bots.ehr_bot import EHRBot
 from bots.master_of_puppets import BotScheduleEntry, MasterOfPuppets
+from bots.payer_bot import PayerBot
 from bots.scheduler_worker import SchedulerWorker
-from data import patient_store, store
+from data import claim_store, patient_store, store
 
 
 # ---------------------------------------------------------------------------
@@ -43,6 +45,14 @@ class TestBotFactory:
     def test_returns_ehr_bot_for_ehr(self):
         bot = BotFactory().provideByType("ehr")
         assert isinstance(bot, EHRBot)
+
+    def test_returns_clearinghouse_bot_for_clearinghouse(self):
+        bot = BotFactory().provideByType("clearinghouse")
+        assert isinstance(bot, ClearingHouseBot)
+
+    def test_returns_payer_bot_for_payer(self):
+        bot = BotFactory().provideByType("payer")
+        assert isinstance(bot, PayerBot)
 
 
 # ---------------------------------------------------------------------------
@@ -245,6 +255,174 @@ class TestMasterOfPuppets:
         assert mock_schedule.call_count == 2
         mock_schedule.assert_any_call("ehr", "acc_001")
         mock_schedule.assert_any_call("ehr", "acc_002")
+
+
+# ---------------------------------------------------------------------------
+# patient_store.upsert
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# ClearingHouseBot
+# ---------------------------------------------------------------------------
+
+class TestClearingHouseBot:
+
+    def test_execute_calls_on_new_record_exactly_3_times(self):
+        bot = ClearingHouseBot()
+        with patch.object(bot, "on_new_record") as mock_on_new:
+            bot.execute()
+        assert mock_on_new.call_count == 3
+
+    def test_on_new_record_maps_correctly_and_calls_upsert(self):
+        record = {
+            "id": "ch_claim_001",
+            "account_id": "acc_001",
+            "patient_id": "pat-123",
+            "payer_id": "availity_001",
+            "status": "ACCEPTED",
+            "remittance_amount": 450.00,
+            "processed_date": "2024-03-22",
+        }
+        with patch.object(claim_store, "upsert") as mock_upsert:
+            ClearingHouseBot().on_new_record(record)
+        mock_upsert.assert_called_once_with({
+            "id": "ch_claim_001",
+            "account_id": "acc_001",
+            "patient_id": "pat-123",
+            "payer_id": "availity_001",
+            "clearing_house_status": "ACCEPTED",
+            "total_billed": 450.00,
+            "date_of_service": "2024-03-22",
+            "description": "Imported from clearing house",
+            "diagnosis": [],
+            "ehr_status": "GENERATED",
+            "payer_status": "PENDING",
+        })
+
+    def test_on_new_record_always_sets_ehr_and_payer_status(self):
+        record = {
+            "id": "ch_claim_002",
+            "account_id": "acc_001",
+            "patient_id": "pat-456",
+            "payer_id": "change_healthcare_001",
+            "status": "REJECTED",
+            "remittance_amount": 0.00,
+            "processed_date": "2024-03-22",
+        }
+        with patch.object(claim_store, "upsert") as mock_upsert:
+            ClearingHouseBot().on_new_record(record)
+        mapped = mock_upsert.call_args[0][0]
+        assert mapped["ehr_status"] == "GENERATED"
+        assert mapped["payer_status"] == "PENDING"
+
+    def test_on_updated_record_maps_and_calls_upsert(self):
+        record = {
+            "id": "ch_claim_003",
+            "account_id": "acc_002",
+            "patient_id": "pat-789",
+            "payer_id": "trizetto_001",
+            "status": "PENDING",
+            "remittance_amount": 0.00,
+            "processed_date": "2024-03-22",
+        }
+        with patch.object(claim_store, "upsert") as mock_upsert:
+            ClearingHouseBot().on_updated_record(record)
+        mock_upsert.assert_called_once_with({
+            "id": "ch_claim_003",
+            "account_id": "acc_002",
+            "patient_id": "pat-789",
+            "payer_id": "trizetto_001",
+            "clearing_house_status": "PENDING",
+            "total_billed": 0.00,
+            "date_of_service": "2024-03-22",
+            "description": "Imported from clearing house",
+            "diagnosis": [],
+            "ehr_status": "GENERATED",
+            "payer_status": "PENDING",
+        })
+
+
+# ---------------------------------------------------------------------------
+# PayerBot
+# ---------------------------------------------------------------------------
+
+class TestPayerBot:
+
+    def test_execute_calls_on_new_record_exactly_3_times(self):
+        bot = PayerBot()
+        with patch.object(bot, "on_new_record") as mock_on_new:
+            bot.execute()
+        assert mock_on_new.call_count == 3
+
+    def test_on_new_record_maps_correctly_and_calls_upsert(self):
+        record = {
+            "id": "pay_auth_001",
+            "account_id": "acc_001",
+            "patient_id": "pat-123",
+            "payer_id": "unitedhealthcare_001",
+            "eligibility_status": "ELIGIBLE",
+            "authorization_code": "AUTH_UC_88821",
+            "authorization_date": "2024-03-20",
+            "expiry_date": "2024-06-20",
+        }
+        with patch.object(claim_store, "upsert") as mock_upsert:
+            PayerBot().on_new_record(record)
+        mock_upsert.assert_called_once_with({
+            "id": "pay_auth_001",
+            "account_id": "acc_001",
+            "patient_id": "pat-123",
+            "payer_id": "unitedhealthcare_001",
+            "payer_status": "ELIGIBLE",
+            "description": "Auth AUTH_UC_88821 expires 2024-06-20",
+            "diagnosis": [],
+            "ehr_status": "GENERATED",
+            "clearing_house_status": "ACCEPTED",
+            "total_billed": 0.00,
+            "date_of_service": "2024-03-20",
+        })
+
+    def test_on_new_record_description_when_authorization_code_is_null(self):
+        record = {
+            "id": "pay_auth_002",
+            "account_id": "acc_001",
+            "patient_id": "pat-456",
+            "payer_id": "anthem_001",
+            "eligibility_status": "INELIGIBLE",
+            "authorization_code": None,
+            "authorization_date": "2024-03-21",
+            "expiry_date": None,
+        }
+        with patch.object(claim_store, "upsert") as mock_upsert:
+            PayerBot().on_new_record(record)
+        mapped = mock_upsert.call_args[0][0]
+        assert mapped["description"] == "Auth None expires None"
+
+    def test_on_updated_record_maps_and_calls_upsert(self):
+        record = {
+            "id": "pay_auth_003",
+            "account_id": "acc_002",
+            "patient_id": "pat-789",
+            "payer_id": "cigna_001",
+            "eligibility_status": "PENDING",
+            "authorization_code": None,
+            "authorization_date": "2024-03-22",
+            "expiry_date": None,
+        }
+        with patch.object(claim_store, "upsert") as mock_upsert:
+            PayerBot().on_updated_record(record)
+        mock_upsert.assert_called_once_with({
+            "id": "pay_auth_003",
+            "account_id": "acc_002",
+            "patient_id": "pat-789",
+            "payer_id": "cigna_001",
+            "payer_status": "PENDING",
+            "description": "Auth None expires None",
+            "diagnosis": [],
+            "ehr_status": "GENERATED",
+            "clearing_house_status": "ACCEPTED",
+            "total_billed": 0.00,
+            "date_of_service": "2024-03-22",
+        })
 
 
 # ---------------------------------------------------------------------------
