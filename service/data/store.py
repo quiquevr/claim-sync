@@ -1,3 +1,46 @@
+# Keyed by claim ID (str)
+claims = {
+    "claim_0001": {
+        "id": "claim_0001",
+        "account_id": "acc_001",
+        "patient_id": 1,
+        "payer_id": 101,
+        "description": "Annual wellness visit",
+        "date_of_service": "2024-01-15",
+        "diagnosis": ["Hypertension"],
+        "total_billed": 250.00,
+        "ehr_status": "GENERATED",
+        "clearing_house_status": "ACCEPTED",
+        "payer_status": "PAID",
+    },
+    "claim_0002": {
+        "id": "claim_0002",
+        "account_id": "acc_002",
+        "patient_id": 2,
+        "payer_id": 202,
+        "description": "Mild winter chobbyness",
+        "date_of_service": "2024-03-22",
+        "diagnosis": ["couch potato"],
+        "total_billed": 666.66,
+        "ehr_status": "GENERATED",
+        "clearing_house_status": "ACCEPTED",
+        "payer_status": "PENDING",
+    },
+    "claim_0003": {
+        "id": "claim_0003",
+        "account_id": "acc_001",
+        "patient_id": 1,
+        "payer_id": 101,
+        "description": "Follow-up blood pressure check",
+        "date_of_service": "2024-06-10",
+        "diagnosis": ["Hypertension"],
+        "total_billed": 120.00,
+        "ehr_status": "GENERATED",
+        "clearing_house_status": "PENDING",
+        "payer_status": "PENDING",
+    },
+}
+
 # Keyed by account ID (str)
 accounts = {
     "acc_001": {"id": "acc_001", "name": "Sunrise Medical Group", "tier": "premium", "created_at": "2023-11-05T09:00:00Z"},
