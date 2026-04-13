@@ -3,7 +3,10 @@
     "allow": [
       "Bash(pip install:*)",
       "Bash(python -m pytest tests/test_schedule_engine.py -v)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(npx vite:*)"
     ]
   }
 }
